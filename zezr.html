@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMART Trade - منصة التجارة العالمية</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --red:#dc2626;--dark-red:#991b1b;--navy:#0f172a;--dark:#020617;
+            --gray:#f1f5f9;--white:#fff;--text:#1e293b;--light:#64748b;
+            --border:#e2e8f0;--gold:#f59e0b;--green:#10b981;
+            --grad-red:linear-gradient(135deg,#dc2626,#b91c1c);
+            --grad-fire:linear-gradient(135deg,#dc2626,#f97316,#fbbf24);
+            --shadow:0 10px 40px rgba(0,0,0,.15);
+            --shadow-red:0 10px 40px rgba(220,38,38,.3);
+        }
+        html{scroll-behavior:smooth}
+        body{font-family:'Cairo',sans-serif;line-height:1.8;color:var(--text);overflow-x:hidden}
+        ::-webkit-scrollbar{width:10px}
+        ::-webkit-scrollbar-track{background:var(--navy)}
+        ::-webkit-scrollbar-thumb{background:var(--grad-red);border-radius:5px}
+
+        /* PRELOADER */
+        .preloader{position:fixed;inset:0;background:var(--dark);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999999;transition:.8s}
+        .preloader.hide{opacity:0;visibility:hidden}
+        .preloader i{font-size:80px;color:var(--red);margin-bottom:30px;animation:spin 2s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .loader-bar{width:250px;height:5px;background:rgba(255,255,255,.1);border-radius:10px;overflow:hidden}
+        .loader-bar div{height:100%;background:var(--grad-fire);animation:load 2s infinite}
+        @keyframes load{0%{width:0}50%{width:80%}100%{width:100%}}
+        .preloader span{color:#fff;margin-top:15px;font-size:18px;letter-spacing:3px}
+
+        /* TOP BAR */
+        .topbar{background:var(--dark);color:#fff;padding:10px 0;font-size:13px;position:fixed;width:100%;top:0;z-index:10001;border-bottom:1px solid rgba(220,38,38,.3)}
+        .topbar .container{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+        .topbar-left{display:flex;gap:25px}
+        .topbar-item{display:flex;align-items:center;gap:8px}
+        .topbar-item i{color:var(--red)}
+        .topbar-item a{color:#fff;text-decoration:none}
+        .topbar-item a:hover{color:var(--red)}
+
+        /* HEADER */
+        header{background:rgba(15,23,42,.98);backdrop-filter:blur(20px);position:fixed;width:100%;top:42px;z-index:10000;transition:.3s;border-bottom:2px solid transparent}
+        header.scrolled{top:0;border-bottom-color:var(--red)}
+        .container{max-width:1400px;margin:0 auto;padding:0 20px}
+        .nav-wrap{display:flex;justify-content:space-between;align-items:center;padding:12px 0}
+
+        /* LOGO */
+        .logo{display:flex;align-items:center;gap:12px;text-decoration:none;cursor:pointer}
+        .logo-box{width:50px;height:50px;background:var(--grad-red);border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-red)}
+        .logo-box i{font-size:24px;color:#fff}
+        .logo h1{font-size:24px;font-weight:900;background:var(--grad-fire);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .logo small{display:block;font-size:11px;color:var(--light)}
+
+        /* SEARCH */
+        .search-wrap{flex:1;max-width:400px;margin:0 20px;position:relative}
+        .search-box{display:flex;background:rgba(255,255,255,.1);border-radius:50px;border:2px solid transparent;transition:.3s}
+        .search-box:focus-within{border-color:var(--red)}
+        .search-box input{flex:1;padding:10px 18px;background:0 0;border:0;color:#fff;font-size:14px;outline:0}
+        .search-box input::placeholder{color:rgba(255,255,255,.5)}
+        .search-box button{padding:10px 20px;background:var(--grad-red);border:0;color:#fff;cursor:pointer;border-radius:0 50px 50px 0}
+        .search-results{position:absolute;top:110%;left:0;right:0;background:var(--navy);border-radius:15px;padding:15px;display:none;box-shadow:var(--shadow);border:1px solid rgba(220,38,38,.3);max-height:350px;overflow-y:auto;z-index:100}
+        .search-results.show{display:block}
+        .sr-item{display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;cursor:pointer;transition:.3s}
+        .sr-item:hover{background:rgba(220,38,38,.1)}
+        .sr-item img{width:45px;height:45px;border-radius:8px;object-fit:cover}
+        .sr-item h4{color:#fff;font-size:14px}
+        .sr-item span{color:var(--light);font-size:12px}
+        .sr-empty{text-align:center;color:var(--light);padding:20px}
+
+        /* NAV */
+        .nav-menu{display:flex;list-style:none;gap:3px;align-items:center}
+        .nav-menu a{color:#fff;text-decoration:none;padding:10px 15px;border-radius:8px;font-weight:600;font-size:14px;transition:.3s}
+        .nav-menu a:hover,.nav-menu a.active{color:var(--red);background:rgba(220,38,38,.1)}
+
+        /* LOGIN BTN */
+        .login-area{position:relative}
+        .btn-login{display:flex;align-items:center;gap:8px;padding:10px 22px;background:var(--grad-red);color:#fff;border:0;border-radius:50px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:var(--shadow-red);transition:.3s;font-family:inherit}
+        .btn-login:hover{transform:translateY(-2px)}
+        .login-drop{position:absolute;top:120%;right:0;width:360px;background:var(--navy);border-radius:20px;padding:30px;display:none;box-shadow:0 25px 80px rgba(0,0,0,.4);border:2px solid rgba(220,38,38,.3);z-index:10002}
+        .login-drop.show{display:block;animation:fadeIn .3s}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+        .login-drop h3{color:#fff;text-align:center;margin-bottom:5px;font-size:22px}
+        .login-drop .sub{color:var(--light);text-align:center;margin-bottom:25px;font-size:13px}
+        .ld-group{margin-bottom:18px}
+        .ld-group label{display:block;color:#fff;font-weight:600;margin-bottom:8px;font-size:14px}
+        .ld-group input{width:100%;padding:12px 16px;background:rgba(255,255,255,.05);border:2px solid rgba(255,255,255,.1);border-radius:10px;color:#fff;font-size:14px;transition:.3s}
+        .ld-group input:focus{outline:0;border-color:var(--red)}
+        .ld-group input::placeholder{color:var(--light)}
+        .ld-submit{width:100%;padding:14px;background:var(--grad-red);color:#fff;border:0;border-radius:10px;font-weight:700;font-size:16px;cursor:pointer;transition:.3s;font-family:inherit}
+        .ld-submit:hover{transform:translateY(-2px);box-shadow:var(--shadow-red)}
+        .ld-tabs{display:flex;margin-bottom:20px;background:rgba(255,255,255,.05);border-radius:10px;overflow:hidden}
+        .ld-tab{flex:1;padding:12px;text-align:center;color:#fff;font-weight:600;cursor:pointer;transition:.3s}
+        .ld-tab.active{background:var(--grad-red)}
+        .ld-form{display:none}.ld-form.active{display:block}
+        .ld-forgot{display:block;text-align:center;margin-top:15px;color:var(--red);text-decoration:none;font-size:13px}
+
+        .mobile-toggle{display:none;font-size:26px;color:#fff;cursor:pointer}
+
+        /* HERO SLIDER */
+        .hero{position:relative;height:100vh;min-height:650px;margin-top:42px;overflow:hidden}
+        .slide{position:absolute;inset:0;opacity:0;transform:scale(1.1);transition:1.5s}
+        .slide.active{opacity:1;transform:scale(1)}
+        .slide img{width:100%;height:100%;object-fit:cover}
+        .slide-over{position:absolute;inset:0;background:linear-gradient(135deg,rgba(2,6,23,.95),rgba(15,23,42,.8),rgba(220,38,38,.2))}
+        .slide-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#fff;z-index:10;width:90%;max-width:950px}
+        .slide-text h1{font-size:60px;font-weight:900;margin-bottom:20px;line-height:1.1}
+        .slide-text h1 span{display:block;background:var(--grad-fire);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .slide-text p{font-size:20px;margin-bottom:35px;opacity:.9}
+        .slide-btns{display:flex;gap:15px;justify-content:center;flex-wrap:wrap}
+        .btn{display:inline-flex;align-items:center;gap:10px;padding:15px 32px;border-radius:50px;font-weight:700;font-size:16px;text-decoration:none;transition:.3s;border:0;cursor:pointer;font-family:inherit}
+        .btn-red{background:var(--grad-red);color:#fff;box-shadow:var(--shadow-red)}
+        .btn-red:hover{transform:translateY(-3px)}
+        .btn-out{background:0 0;color:#fff;border:2px solid #fff}
+        .btn-out:hover{background:#fff;color:var(--navy)}
+        .slider-nav{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);display:flex;gap:12px;z-index:20}
+        .slider-dot{width:45px;height:5px;border-radius:5px;background:rgba(255,255,255,.3);cursor:pointer;transition:.3s}
+        .slider-dot.active{background:var(--red)}
+        .slider-arrows{position:absolute;top:50%;transform:translateY(-50%);width:100%;display:flex;justify-content:space-between;padding:0 25px;z-index:20}
+        .s-arrow{width:50px;height:50px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;transition:.3s;font-size:18px}
+        .s-arrow:hover{background:var(--grad-red);border-color:var(--red)}
+
+        /* STATS */
+        .stats{background:var(--dark);padding:40px 0;border-top:1px solid rgba(220,38,38,.3)}
+        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:30px}
+        .stat{text-align:center}
+        .stat-num{font-size:48px;font-weight:900;background:var(--grad-fire);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .stat-lbl{color:rgba(255,255,255,.7);font-size:15px;margin-top:5px}
+
+        /* SECTION COMMON */
+        section{padding:100px 0}
+        .sec-head{text-align:center;margin-bottom:60px}
+        .sec-tag{display:inline-flex;align-items:center;gap:8px;padding:8px 22px;background:rgba(220,38,38,.1);color:var(--red);border-radius:50px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:15px;border:1px solid rgba(220,38,38,.2)}
+        .sec-title{font-size:44px;font-weight:900;color:var(--navy);margin-bottom:18px}
+        .sec-title span{background:var(--grad-red);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+        .sec-desc{font-size:17px;color:var(--light);max-width:650px;margin:0 auto}
+
+        /* VIDEO */
+        #video{background:var(--navy)}
+        #video .sec-title{color:#fff}
+        .video-box{max-width:900px;margin:0 auto;border-radius:20px;overflow:hidden;position:relative;cursor:pointer;box-shadow:var(--shadow)}
+        .video-box img{width:100%;height:450px;object-fit:cover}
+        .video-box::before{content:'';position:absolute;inset:0;background:rgba(0,0,0,.4)}
+        .play-btn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:90px;height:90px;background:var(--grad-red);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 50px rgba(220,38,38,.5);transition:.3s}
+        .play-btn:hover{transform:translate(-50%,-50%) scale(1.1)}
+        .play-btn i{font-size:35px;color:#fff;margin-right:-5px}
+        .vid-feats{display:grid;grid-template-columns:repeat(3,1fr);gap:25px;margin-top:50px}
+        .vid-feat{text-align:center;padding:30px;background:rgba(255,255,255,.05);border-radius:20px;border:1px solid rgba(255,255,255,.1)}
+        .vid-feat i{font-size:45px;color:var(--red);margin-bottom:15px}
+        .vid-feat h4{color:#fff;font-size:18px;margin-bottom:8px}
+        .vid-feat p{color:rgba(255,255,255,.7);font-size:14px}
+        .vid-modal{position:fixed;inset:0;background:rgba(0,0,0,.95);display:none;align-items:center;justify-content:center;z-index:100000}
+        .vid-modal.show{display:flex}
+        .vid-modal video{width:90%;max-width:900px;border-radius:15px}
+        .vid-close{position:absolute;top:30px;right:30px;color:#fff;font-size:40px;cursor:pointer}
+
+        /* SERVICES */
+        #services{background:var(--gray)}
+        .srv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:30px}
+        .srv-card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:var(--shadow);transition:.4s}
+        .srv-card:hover{transform:translateY(-10px)}
+        .srv-img{height:230px;overflow:hidden;position:relative}
+        .srv-img img{width:100%;height:100%;object-fit:cover;transition:.5s}
+        .srv-card:hover .srv-img img{transform:scale(1.1)}
+        .srv-icon{position:absolute;top:15px;right:15px;width:60px;height:60px;background:var(--grad-red);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff}
+        .srv-body{padding:25px}
+        .srv-body h3{font-size:22px;color:var(--navy);margin-bottom:12px}
+        .srv-body p{color:var(--light);margin-bottom:18px;font-size:15px}
+        .srv-link{color:var(--red);font-weight:700;text-decoration:none;display:flex;align-items:center;gap:8px}
+
+        /* TESTIMONIALS */
+        #testimonials{background:var(--navy)}
+        #testimonials .sec-title{color:#fff}
+        .testi-slider{max-width:800px;margin:0 auto;position:relative}
+        .testi{display:none;text-align:center;padding:40px;background:rgba(255,255,255,.05);border-radius:25px;border:1px solid rgba(255,255,255,.1)}
+        .testi.active{display:block;animation:fadeIn .5s}
+        .testi-avatar{width:90px;height:90px;border-radius:50%;margin:0 auto 20px;border:4px solid var(--red);overflow:hidden}
+        .testi-avatar img{width:100%;height:100%;object-fit:cover}
+        .testi-stars{display:flex;justify-content:center;gap:5px;margin-bottom:20px}
+        .testi-stars i{color:var(--gold);font-size:18px}
+        .testi-text{font-size:18px;color:#fff;line-height:1.8;margin-bottom:25px;font-style:italic}
+        .testi-name h4{color:#fff;font-size:20px;margin-bottom:5px}
+        .testi-name span{color:var(--red);font-size:14px}
+        .testi-dots{display:flex;justify-content:center;gap:12px;margin-top:30px}
+        .testi-dot{width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.3);cursor:pointer;transition:.3s}
+        .testi-dot.active{background:var(--red);transform:scale(1.3)}
+
+        /* GALLERY */
+        .gallery-filters{display:flex;justify-content:center;gap:12px;margin-bottom:40px;flex-wrap:wrap}
+        .gal-filter{padding:10px 25px;background:var(--gray);border:0;border-radius:50px;font-weight:700;cursor:pointer;transition:.3s;font-family:inherit;font-size:14px}
+        .gal-filter.active,.gal-filter:hover{background:var(--grad-red);color:#fff}
+        .gal-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+        .gal-item{position:relative;border-radius:15px;overflow:hidden;cursor:pointer;height:250px}
+        .gal-item img{width:100%;height:100%;object-fit:cover;transition:.5s}
+        .gal-item:hover img{transform:scale(1.1)}
+        .gal-over{position:absolute;inset:0;background:rgba(220,38,38,.8);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:.3s}
+        .gal-item:hover .gal-over{opacity:1}
+        .gal-over i{font-size:35px;color:#fff;margin-bottom:10px}
+        .gal-over span{color:#fff;font-weight:700;font-size:14px}
+        .lightbox{position:fixed;inset:0;background:rgba(0,0,0,.95);display:none;align-items:center;justify-content:center;z-index:100000}
+        .lightbox.show{display:flex}
+        .lb-content{position:relative;max-width:90%;max-height:90%}
+        .lb-content img{max-width:100%;max-height:85vh;border-radius:12px}
+        .lb-close{position:absolute;top:-45px;right:0;color:#fff;font-size:35px;cursor:pointer}
+        .lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:45px;height:45px;background:var(--grad-red);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;font-size:18px}
+        .lb-prev{left:-60px}.lb-next{right:-60px}
+
+        /* BLOG */
+        #blog{background:var(--gray)}
+        .blog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:30px}
+        .blog-card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:var(--shadow);transition:.4s}
+        .blog-card:hover{transform:translateY(-10px)}
+        .blog-img{height:200px;overflow:hidden;position:relative}
+        .blog-img img{width:100%;height:100%;object-fit:cover;transition:.5s}
+        .blog-card:hover .blog-img img{transform:scale(1.1)}
+        .blog-date{position:absolute;top:15px;right:15px;background:var(--grad-red);color:#fff;padding:10px 18px;border-radius:10px;text-align:center}
+        .blog-date .day{display:block;font-size:22px;font-weight:900;line-height:1}
+        .blog-date .mon{font-size:11px}
+        .blog-body{padding:25px}
+        .blog-cat{display:inline-block;padding:4px 12px;background:rgba(220,38,38,.1);color:var(--red);border-radius:20px;font-size:12px;font-weight:700;margin-bottom:12px}
+        .blog-body h3{font-size:20px;color:var(--navy);margin-bottom:12px;line-height:1.4}
+        .blog-body p{color:var(--light);margin-bottom:15px;font-size:14px}
+        .blog-foot{display:flex;justify-content:space-between;align-items:center;padding-top:15px;border-top:1px solid var(--border)}
+        .blog-author{display:flex;align-items:center;gap:10px}
+        .blog-author img{width:35px;height:35px;border-radius:50%;object-fit:cover}
+        .blog-author span{font-weight:600;font-size:13px}
+        .read-more{color:var(--red);font-weight:700;text-decoration:none;font-size:14px;display:flex;align-items:center;gap:6px}
+
+        /* ARTICLE */
+        .article-wrap{max-width:850px;margin:0 auto}
+        .article-wrap .art-header{text-align:center;margin-bottom:40px}
+        .article-wrap .art-header h1{font-size:38px;color:var(--navy);margin-bottom:20px;line-height:1.3}
+        .art-meta{display:flex;justify-content:center;gap:25px;color:var(--light);flex-wrap:wrap}
+        .art-meta span{display:flex;align-items:center;gap:8px;font-size:14px}
+        .art-meta i{color:var(--red)}
+        .art-featured{width:100%;height:450px;object-fit:cover;border-radius:20px;margin-bottom:40px}
+        .art-content{font-size:17px;line-height:2}
+        .art-content h2{font-size:28px;color:var(--navy);margin:35px 0 18px;padding-right:20px;border-right:4px solid var(--red);border-radius:2px}
+        .art-content h3{font-size:22px;color:var(--navy);margin:25px 0 12px}
+        .art-content p{margin-bottom:18px;text-align:justify}
+        .art-content ul,.art-content ol{margin:18px 0;padding-right:25px}
+        .art-content li{margin-bottom:8px}
+        .art-content blockquote{background:rgba(220,38,38,.05);border-right:4px solid var(--red);padding:25px;margin:25px 0;border-radius:12px;font-style:italic;font-size:18px;color:var(--text)}
+        .art-images{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:30px 0}
+        .art-images img{width:100%;height:280px;object-fit:cover;border-radius:12px}
+        .art-highlight{background:var(--grad-red);color:#fff;padding:35px;border-radius:18px;margin:30px 0}
+        .art-highlight h4{font-size:22px;margin-bottom:12px}
+        .art-tags{display:flex;flex-wrap:wrap;gap:10px;margin-top:35px;padding-top:25px;border-top:1px solid var(--border)}
+        .art-tag{padding:6px 18px;background:var(--gray);border-radius:20px;font-size:13px;color:var(--text)}
+
+        /* FAQ */
+        #faq{background:var(--gray)}
+        .faq-wrap{max-width:850px;margin:0 auto}
+        .faq-item{background:#fff;border-radius:15px;margin-bottom:15px;overflow:hidden;box-shadow:var(--shadow)}
+        .faq-q{display:flex;justify-content:space-between;align-items:center;padding:22px 25px;cursor:pointer;transition:.3s}
+        .faq-q:hover{background:rgba(220,38,38,.05)}
+        .faq-q h4{font-size:17px;color:var(--navy);display:flex;align-items:center;gap:12px}
+        .faq-q h4 i{color:var(--red);font-size:18px}
+        .faq-arrow{width:35px;height:35px;background:var(--gray);border-radius:50%;display:flex;align-items:center;justify-content:center;transition:.3s;flex-shrink:0}
+        .faq-item.open .faq-arrow{background:var(--grad-red);color:#fff;transform:rotate(180deg)}
+        .faq-a{max-height:0;overflow:hidden;transition:.3s}
+        .faq-item.open .faq-a{max-height:300px}
+        .faq-a-inner{padding:0 25px 22px;color:var(--light);line-height:1.8}
+
+        /* COUNTRIES */
+        #countries{background:var(--navy)}
+        #countries .sec-title{color:#fff}
+        #map{height:400px;border-radius:20px;margin-bottom:40px;border:3px solid rgba(220,38,38,.3)}
+        .cnt-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:18px}
+        .cnt-card{background:rgba(255,255,255,.05);padding:22px;border-radius:15px;text-align:center;border:1px solid rgba(255,255,255,.1);transition:.3s;cursor:pointer}
+        .cnt-card:hover{transform:translateY(-8px);border-color:var(--red);background:rgba(220,38,38,.1)}
+        .cnt-flag{width:60px;height:42px;object-fit:cover;border-radius:6px;margin:0 auto 12px}
+        .cnt-card h4{color:#fff;font-size:15px;margin-bottom:6px}
+        .cnt-stats{color:rgba(255,255,255,.6);font-size:12px}
+        .cnt-stats i{color:var(--red);margin-left:5px}
+
+        /* CONTACT */
+        .contact-grid{display:grid;grid-template-columns:1fr 1.3fr;gap:50px}
+        .contact-info{background:var(--grad-red);padding:45px;border-radius:25px;color:#fff;position:relative;overflow:hidden}
+        .contact-info::before{content:'';position:absolute;top:-50%;right:-50%;width:100%;height:100%;background:radial-gradient(circle,rgba(255,255,255,.1),transparent)}
+        .contact-info>*{position:relative;z-index:1}
+        .contact-info h3{font-size:30px;margin-bottom:25px}
+        .c-item{display:flex;gap:18px;margin-bottom:22px;padding:18px;background:rgba(255,255,255,.1);border-radius:12px}
+        .c-icon{width:50px;height:50px;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--red);flex-shrink:0}
+        .c-text h4{font-size:16px;margin-bottom:4px}
+        .c-text p{opacity:.9;font-size:14px}
+        .social{display:flex;gap:12px;margin-top:25px}
+        .social a{width:45px;height:45px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;text-decoration:none;transition:.3s}
+        .social a:hover{background:#fff;color:var(--red);transform:translateY(-5px)}
+        .contact-form{background:var(--gray);padding:45px;border-radius:25px}
+        .contact-form h3{font-size:26px;color:var(--navy);margin-bottom:25px}
+        .form-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+        .form-group{margin-bottom:18px}
+        .form-group label{display:block;font-weight:700;color:var(--navy);margin-bottom:8px;font-size:14px}
+        .f-ctrl{width:100%;padding:14px 18px;border:2px solid var(--border);border-radius:10px;font-size:15px;transition:.3s;font-family:inherit;background:#fff}
+        .f-ctrl:focus{outline:0;border-color:var(--red)}
+        textarea.f-ctrl{min-height:130px;resize:vertical}
+        .submit-btn{width:100%;padding:16px;background:var(--grad-red);color:#fff;border:0;border-radius:12px;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:.3s;font-family:inherit;margin-top:10px}
+        .submit-btn:hover{transform:translateY(-3px);box-shadow:var(--shadow-red)}
+
+        /* FOOTER */
+        footer{background:var(--dark);color:#fff;padding:70px 0 25px}
+        footer::before{content:'';display:block;height:4px;background:var(--grad-red);margin-bottom:70px}
+        .foot-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;margin-bottom:40px}
+        .foot-about p{color:rgba(255,255,255,.7);margin:20px 0;font-size:14px}
+        .foot-sec h3{font-size:18px;margin-bottom:20px}
+        .foot-links{list-style:none}
+        .foot-links li{margin-bottom:10px}
+        .foot-links a{color:rgba(255,255,255,.7);text-decoration:none;font-size:14px;display:flex;align-items:center;gap:8px;transition:.3s}
+        .foot-links a:hover{color:var(--red);transform:translateX(5px)}
+        .foot-links a i{color:var(--red);font-size:11px}
+        .foot-bottom{border-top:1px solid rgba(255,255,255,.1);padding-top:25px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px}
+        .foot-bottom p{color:rgba(255,255,255,.5);font-size:13px}
+        .visitor{display:flex;align-items:center;gap:10px;background:rgba(220,38,38,.1);padding:8px 18px;border-radius:50px;font-size:13px}
+        .visitor i{color:var(--red)}
+
+        /* FLOATING */
+        .float-wa{position:fixed;bottom:25px;left:25px;width:60px;height:60px;background:#25d366;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;text-decoration:none;z-index:9999;box-shadow:0 5px 25px rgba(37,211,102,.4);animation:pulse 2s infinite}
+        @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+        .back-top{position:fixed;bottom:25px;right:25px;width:48px;height:48px;background:var(--grad-red);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;text-decoration:none;z-index:9999;opacity:0;visibility:hidden;transition:.3s;font-size:18px}
+        .back-top.show{opacity:1;visibility:visible}
+        .back-top:hover{transform:translateY(-5px)}
+
+        /* MODAL */
+        .modal{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:100000}
+        .modal.show{display:flex}
+        .modal-box{background:#fff;padding:45px;border-radius:25px;max-width:450px;text-align:center;width:90%}
+        .modal-box .m-icon{width:75px;height:75px;background:var(--grad-red);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:35px;color:#fff}
+        .modal-box h3{font-size:26px;color:var(--navy);margin-bottom:12px}
+        .modal-box p{color:var(--light);margin-bottom:22px}
+        .modal-btn{padding:12px 35px;background:var(--grad-red);color:#fff;border:0;border-radius:50px;font-weight:700;cursor:pointer;font-family:inherit;font-size:15px}
+
+        /* RESPONSIVE */
+        @media(max-width:1200px){
+            .srv-grid,.blog-grid{grid-template-columns:repeat(2,1fr)}
+            .gal-grid{grid-template-columns:repeat(3,1fr)}
+            .cnt-grid{grid-template-columns:repeat(4,1fr)}
+        }
+        @media(max-width:992px){
+            .mobile-toggle{display:block}
+            .nav-menu,.search-wrap{display:none}
+            .nav-menu.active{display:flex;position:fixed;top:110px;right:0;width:100%;flex-direction:column;background:var(--dark);padding:25px}
+            .slide-text h1{font-size:38px}
+            .stats-grid{grid-template-columns:repeat(2,1fr)}
+            .srv-grid,.blog-grid{grid-template-columns:1fr}
+            .gal-grid{grid-template-columns:repeat(2,1fr)}
+            .contact-grid{grid-template-columns:1fr}
+            .foot-grid{grid-template-columns:repeat(2,1fr)}
+            .cnt-grid{grid-template-columns:repeat(3,1fr)}
+            .vid-feats{grid-template-columns:1fr}
+            .form-row{grid-template-columns:1fr}
+        }
+        @media(max-width:768px){
+            .slide-text h1{font-size:30px}
+            .sec-title{font-size:32px}
+            .stats-grid,.gal-grid{grid-template-columns:1fr}
+            .cnt-grid{grid-template-columns:repeat(2,1fr)}
+            .foot-grid{grid-template-columns:1fr}
+            .topbar-left{display:none}
+            .art-images{grid-template-columns:1fr}
+            .login-drop{width:calc(100vw - 40px);right:-50px}
+        }
+    </style>
+</head><body>
+<!-- PRELOADER -->
+<div class="preloader" id="preloader">
+    <i class="fas fa-globe-americas"></i>
+    <div class="loader-bar"><div></div></div>
+    <span>SMART TRADE</span>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+    <div class="container">
+        <div class="topbar-left">
+            <div class="topbar-item"><i class="fas fa-phone-alt"></i><a href="tel:+963111234567">+963 11 123 4567</a></div>
+            <div class="topbar-item"><i class="fas fa-envelope"></i><a href="mailto:info@smartsyria.com">info@smartsyria.com</a></div>
+            <div class="topbar-item"><i class="fas fa-clock"></i><span>الأحد - الخميس: 9:00 - 18:00</span></div>
+        </div>
+        <div class="topbar-item"><i class="fas fa-globe"></i><span>العربية | English</span></div>
+    </div>
+</div>
+
+<!-- HEADER -->
+<header id="header">
+<div class="container">
+<div class="nav-wrap">
+    <div class="logo"><div class="logo-box"><i class="fas fa-chart-line"></i></div><div><h1>SMART Trade</h1><small>منصة التجارة العالمية</small></div></div>
+
+    <div class="search-wrap">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="ابحث عن الخدمات، الدول، المقالات..." oninput="doSearch()">
+            <button><i class="fas fa-search"></i></button>
+        </div>
+        <div class="search-results" id="searchResults"></div>
+    </div>
+
+    <ul class="nav-menu" id="navMenu">
+        <li><a href="#hero" class="active">الرئيسية</a></li>
+        <li><a href="#services">الخدمات</a></li>
+        <li><a href="#gallery">المعرض</a></li>
+        <li><a href="#blog">المدونة</a></li>
+        <li><a href="#countries">الدول</a></li>
+        <li><a href="#faq">الأسئلة</a></li>
+        <li><a href="#contact">تواصل</a></li>
+    </ul>
+
+    <div class="login-area">
+        <button class="btn-login" onclick="document.getElementById('loginDrop').classList.toggle('show')">
+            <i class="fas fa-user-circle"></i> دخول
+        </button>
+        <div class="login-drop" id="loginDrop">
+            <h3>مرحباً بك</h3>
+            <p class="sub">سجل الدخول للوصول لحسابك</p>
+            <div class="ld-tabs">
+                <div class="ld-tab active" onclick="switchLDTab('login')">دخول</div>
+                <div class="ld-tab" onclick="switchLDTab('reg')">تسجيل</div>
+            </div>
+            <form id="ldLogin" class="ld-form active" onsubmit="handleLD(event)">
+                <div class="ld-group"><label>البريد الإلكتروني</label><input type="email" placeholder="email@example.com" required></div>
+                <div class="ld-group"><label>كلمة المرور</label><input type="password" placeholder="••••••••" required></div>
+                <button type="submit" class="ld-submit">تسجيل الدخول</button>
+                <a href="#" class="ld-forgot">نسيت كلمة المرور؟</a>
+            </form>
+            <form id="ldReg" class="ld-form" onsubmit="handleLD(event)">
+                <div class="ld-group"><label>الاسم الكامل</label><input type="text" placeholder="أحمد محمد" required></div>
+                <div class="ld-group"><label>البريد الإلكتروني</label><input type="email" placeholder="email@example.com" required></div>
+                <div class="ld-group"><label>كلمة المرور</label><input type="password" placeholder="••••••••" required></div>
+                <button type="submit" class="ld-submit">إنشاء حساب</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="mobile-toggle" onclick="document.getElementById('navMenu').classList.toggle('active')"><i class="fas fa-bars"></i></div>
+</div>
+</div>
+</header>
+
+<!-- HERO SLIDER -->
+<section id="hero" class="hero">
+    <div class="slide active"><img src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=1920" alt=""><div class="slide-over"></div><div class="slide-text"><h1>منصة التجارة العالمية<br><span>الأكثر موثوقية</span></h1><p>نربط سوريا بالعالم - خدمات استيراد وتصدير متكاملة في أكثر من 54 دولة</p><div class="slide-btns"><a href="#services" class="btn btn-red"><i class="fas fa-rocket"></i> استكشف الخدمات</a><a href="#contact" class="btn btn-out"><i class="fas fa-phone"></i> تواصل معنا</a></div></div></div>
+    <div class="slide"><img src="https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?w=1920" alt=""><div class="slide-over"></div><div class="slide-text"><h1>شحن عالمي<br><span>سريع وآمن</span></h1><p>خدمات شحن بحري وجوي وبري مع تتبع مباشر وتأمين شامل</p><div class="slide-btns"><a href="#services" class="btn btn-red"><i class="fas fa-ship"></i> خدمات الشحن</a><a href="#countries" class="btn btn-out"><i class="fas fa-globe"></i> شبكتنا</a></div></div></div>
+    <div class="slide"><img src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1920" alt=""><div class="slide-over"></div><div class="slide-text"><h1>حلول لوجستية<br><span>متكاملة</span></h1><p>من التخزين إلى التخليص الجمركي والتوصيل - حلول شاملة</p><div class="slide-btns"><a href="#contact" class="btn btn-red"><i class="fas fa-paper-plane"></i> احصل على عرض</a><a href="#article" class="btn btn-out"><i class="fas fa-book"></i> اقرأ المزيد</a></div></div></div>
+    <div class="slide"><img src="https://images.unsplash.com/photo-1553413077-190dd305871c?w=1920" alt=""><div class="slide-over"></div><div class="slide-text"><h1>مستودعات حديثة<br><span>ومؤمنة</span></h1><p>مساحات تخزين واسعة بأنظمة إدارة ذكية وحراسة 24/7</p><div class="slide-btns"><a href="#services" class="btn btn-red"><i class="fas fa-warehouse"></i> التخزين</a><a href="#gallery" class="btn btn-out"><i class="fas fa-images"></i> المعرض</a></div></div></div>
+    <div class="slider-nav"><div class="slider-dot active" onclick="goSlide(0)"></div><div class="slider-dot" onclick="goSlide(1)"></div><div class="slider-dot" onclick="goSlide(2)"></div><div class="slider-dot" onclick="goSlide(3)"></div></div>
+    <div class="slider-arrows"><div class="s-arrow" onclick="prevS()"><i class="fas fa-chevron-right"></i></div><div class="s-arrow" onclick="nextS()"><i class="fas fa-chevron-left"></i></div></div>
+</section>
+
+<!-- STATS -->
+<section class="stats"><div class="container"><div class="stats-grid">
+    <div class="stat"><span class="stat-num" data-c="54">0</span><div class="stat-lbl">دولة حول العالم</div></div>
+    <div class="stat"><span class="stat-num" data-c="2500">0</span><div class="stat-lbl">شحنة منجزة</div></div>
+    <div class="stat"><span class="stat-num" data-c="1200">0</span><div class="stat-lbl">عميل سعيد</div></div>
+    <div class="stat"><span class="stat-num" data-c="15">0</span><div class="stat-lbl">سنة خبرة</div></div>
+</div></div></section>
+
+<!-- VIDEO -->
+<section id="video"><div class="container">
+    <div class="sec-head"><span class="sec-tag"><i class="fas fa-play"></i> فيديو تعريفي</span><h2 class="sec-title">تعرف على <span>SMART Trade</span></h2></div>
+    <div class="video-box" onclick="document.getElementById('vidModal').classList.add('show')"><img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200" alt=""><div class="play-btn"><i class="fas fa-play"></i></div></div>
+    <div class="vid-feats">
+        <div class="vid-feat"><i class="fas fa-globe-americas"></i><h4>تغطية عالمية</h4><p>شركاء في أكثر من 54 دولة</p></div>
+        <div class="vid-feat"><i class="fas fa-shield-alt"></i><h4>موثوقية تامة</h4><p>15 عاماً من الخبرة</p></div>
+        <div class="vid-feat"><i class="fas fa-headset"></i><h4>دعم متواصل</h4><p>فريق متاح على مدار الساعة</p></div>
+    </div>
+</div></section>
+<div class="vid-modal" id="vidModal"><span class="vid-close" onclick="document.getElementById('vidModal').classList.remove('show');document.getElementById('vid').pause()">&times;</span><video id="vid" controls><source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4"></video></div>
+
+<!-- SERVICES -->
+<section id="services"><div class="container">
+    <div class="sec-head"><span class="sec-tag"><i class="fas fa-cogs"></i> خدماتنا</span><h2 class="sec-title">حلول تجارية <span>متكاملة</span></h2><p class="sec-desc">نقدم مجموعة شاملة من الخدمات اللوجستية والتجارية</p></div>
+    <div class="srv-grid">
+        <div class="srv-card"><div class="srv-img"><img src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=600" alt=""><div class="srv-icon"><i class="fas fa-file-export"></i></div></div><div class="srv-body"><h3>خدمات التصدير</h3><p>تصدير المنتجات السورية عالية الجودة إلى الأسواق العالمية</p><a href="#contact" class="srv-link">طلب الخدمة <i class="fas fa-arrow-left"></i></a></div></div>
+        <div class="srv-card"><div class="srv-img"><img src="https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?w=600" alt=""><div class="srv-icon"><i class="fas fa-file-import"></i></div></div><div class="srv-body"><h3>خدمات الاستيراد</h3><p>استيراد البضائع من مختلف دول العالم مع التخليص الجمركي</p><a href="#contact" class="srv-link">طلب الخدمة <i class="fas fa-arrow-left"></i></a></div></div>
+        <div class="srv-card"><div class="srv-img"><img src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600" alt=""><div class="srv-icon"><i class="fas fa-truck-loading"></i></div></div><div class="srv-body"><h3>الشحن واللوجستيات</h3><p>حلول شحن متكاملة عبر البحر والجو والبر مع تتبع مباشر</p><a href="#contact" class="srv-link">طلب الخدمة <i class="fas fa-arrow-left"></i></a></div></div>
+        <div class="srv-card"><div class="srv-img"><img src="https://images.unsplash.com/photo-1553413077-190dd305871c?w=600" alt=""><div class="srv-icon"><i class="fas fa-warehouse"></i></div></div><div class="srv-body"><h3>التخزين</h3><p>مستودعات حديثة بأنظمة أمان متطورة وإدارة مخزون ذكية</p><a href="#contact" class="srv-link">طلب الخدمة <i class="fas fa-arrow-left"></i></a></div></div>
+        <div class="srv-card"><div class="srv-img"><img src="https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=600" alt=""><div class="srv-icon"><i class="fas fa-file-invoice"></i></div></div><div class="srv-body"><h3>التخليص الجمركي</h3><p>فريق متخصص في إنجاز كافة إجراءات التخليص بسرعة</p><a href="#contact" class="srv-link">طلب الخدمة <i class="fas fa-arrow-left"></i></a></div></div>
+        <div class="srv-card"><div class="srv-img"><img src="https://images.unsplash.com/photo-1551434678-e076c223a692?w=600" alt=""><div class="srv-icon"><i class="fas fa-user-tie"></i></div></div><div class="srv-body"><h3>الاستشارات التجارية</h3><p>استشارات متخصصة في التجارة الدولية واستراتيجيات النمو</p><a href="#contact" class="srv-link">طلب الخدمة <i class="fas fa-arrow-left"></i></a></div></div>
+    </div>
+</div></section>
+
+<!-- TESTIMONIALS -->
+<section id="testimonials"><div class="container">
+    <div class="sec-head"><span class="sec-tag"><i class="fas fa-quote-right"></i> شهادات العملاء</span><h2 class="sec-title" style="color:#fff">ماذا يقول <span>عملاؤنا</span></h2></div>
+    <div class="testi-slider">
+        <div class="testi active"><div class="testi-avatar"><img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200" alt=""></div><div class="testi-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div><p class="testi-text">"تجربة ممتازة مع SMART Trade! ساعدونا في تصدير منتجاتنا إلى 15 دولة خلال عام واحد. فريق محترف وخدمة متميزة."</p><div class="testi-name"><h4>أحمد محمد</h4><span>مدير شركة الأصالة للمنسوجات</span></div></div>
+        <div class="testi"><div class="testi-avatar"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200" alt=""></div><div class="testi-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i></div><p class="testi-text">"خدمة التخليص الجمركي السريعة وفرت علينا الكثير من الوقت والجهد. أنصح بشدة بالتعامل معهم."</p><div class="testi-name"><h4>سارة خليل</h4><span>مديرة الاستيراد - شركة المستقبل</span></div></div>
+        <div class="testi"><div class="testi-avatar"><img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200" alt=""></div><div class="testi-stars"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i></div><p class="testi-text">"شراكة ناجحة منذ 5 سنوات. SMART Trade هي الخيار الأول لنا في جميع عمليات الشحن الدولية."</p><div class="testi-name"><h4>محمود العلي</h4><span>رئيس مجلس الإدارة - مجموعة النور</span></div></div>
+    </div>
+    <div class="testi-dots"><div class="testi-dot active" onclick="goTesti(0)"></div><div class="testi-dot" onclick="goTesti(1)"></div><div class="testi-dot" onclick="goTesti(2)"></div></div>
+</div></section>
+
+<!-- GALLERY -->
+<section id="gallery"><div class="container">
+    <div class="sec-head"><span class="sec-tag"><i class="fas fa-images"></i> معرض الصور</span><h2 class="sec-title">لقطات من <span>أعمالنا</span></h2></div>
+    <div class="gallery-filters">
+        <button class="gal-filter active" onclick="filterGal('all',this)">الكل</button>
+        <button class="gal-filter" onclick="filterGal('shipping',this)">الشحن</button>
+        <button class="gal-filter" onclick="filterGal('warehouse',this)">المستودعات</button>
+        <button class="gal-filter" onclick="filterGal('products',this)">المنتجات</button>
+    </div>
+    <div class="gal-grid" id="galGrid">
+        <div class="gal-item" data-cat="shipping" onclick="openLB(0)"><img src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=600" alt=""><div class="gal-over"><i class="fas fa-search-plus"></i><span>شحن بحري</span></div></div>
+        <div class="gal-item" data-cat="warehouse" onclick="openLB(1)"><img src="https://images.unsplash.com/photo-1553413077-190dd305871c?w=600" alt=""><div class="gal-over"><i class="fas fa-search-plus"></i><span>مستودعات</span></div></div>
+        <div class="gal-item" data-cat="products" onclick="openLB(2)"><img src="https://images.unsplash.com/photo-1489924124318-86f1b3c0cd02?w=600" alt=""><div class="gal-over"><i class="fas fa-search-plus"></i><span>منسوجات</span></div></div>
+        <div class="gal-item" data-cat="shipping" onclick="openLB(3)"><img src="https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?w=600" alt=""><div class="gal-over"><i class="fas fa-search-plus"></i><span>حاويات شحن</span></div></div>
+        <div class="gal-item" data-cat="products" onclick="openLB(4)"><img src="https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600" alt=""><div class="gal-over"><i class="fas fa-search-plus"></i><span>زيت زيتون</span></div></div>
+        <div class="gal-item" data-cat="warehouse" onclick="openLB(5)"><img src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600" alt=""><div class="gal-over"><i class="fas fa-search-plus"></i><span>لوجستيات</span></div></div>
+        <div class="gal-item" data-cat="products" onclick="openLB(6)"><img src="https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600" alt=""><div class="gal-over"><i class="fas fa-search-plus"></i><span>توابل</span></div></div>
+        <div class="gal-item" data-cat="shipping" onclick="openLB(7)"><img src="https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=600" alt=""><div class="gal-over"><i class="fas fa-search-plus"></i><span>شحن جوي</span></div></div>
+    </div>
+</div></section>
+<div class="lightbox" id="lightbox"><div class="lb-content"><span class="lb-close" onclick="closeLB()">&times;</span><span class="lb-nav lb-prev" onclick="lbNav(-1)"><i class="fas fa-chevron-right"></i></span><img id="lbImg" src="" alt=""><span class="lb-nav lb-next" onclick="lbNav(1)"><i class="fas fa-chevron-left"></i></span></div></div>
+
+<!-- BLOG -->
+<section id="blog"><div class="container">
+    <div class="sec-head"><span class="sec-tag"><i class="fas fa-newspaper"></i> المدونة</span><h2 class="sec-title">آخر <span>المقالات</span></h2></div>
+    <div class="blog-grid">
+        <div class="blog-card"><div class="blog-img"><img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=600" alt=""><div class="blog-date"><span class="day">15</span><span class="mon">يناير</span></div></div><div class="blog-body"><span class="blog-cat">تجارة دولية</span><h3>كيف تبدأ في التصدير: دليل شامل للمبتدئين</h3><p>تعرف على الخطوات الأساسية لبدء تصدير منتجاتك إلى الأسواق العالمية...</p><div class="blog-foot"><div class="blog-author"><img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" alt=""><span>أحمد</span></div><a href="#article" class="read-more">اقرأ المزيد <i class="fas fa-arrow-left"></i></a></div></div></div>
+        <div class="blog-card"><div class="blog-img"><img src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=600" alt=""><div class="blog-date"><span class="day">10</span><span class="mon">يناير</span></div></div><div class="blog-body"><span class="blog-cat">لوجستيات</span><h3>أفضل طرق الشحن الدولي وكيفية اختيار الأنسب</h3><p>مقارنة شاملة بين الشحن البحري والجوي والبري...</p><div class="blog-foot"><div class="blog-author"><img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100" alt=""><span>سارة</span></div><a href="#article" class="read-more">اقرأ المزيد <i class="fas fa-arrow-left"></i></a></div></div></div>
+        <div class="blog-card"><div class="blog-img"><img src="https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=600" alt=""><div class="blog-date"><span class="day">05</span><span class="mon">يناير</span></div></div><div class="blog-body"><span class="blog-cat">جمارك</span><h3>إجراءات التخليص الجمركي: كل ما تحتاج معرفته</h3><p>دليل تفصيلي لفهم إجراءات التخليص الجمركي...</p><div class="blog-foot"><div class="blog-author"><img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100" alt=""><span>محمود</span></div><a href="#article" class="read-more">اقرأ المزيد <i class="fas fa-arrow-left"></i></a></div></div></div>
+    </div>
+</div></section>
+
+<!-- ARTICLE -->
+<section id="article"><div class="container"><div class="article-wrap">
+    <div class="art-header"><h1>دليل شامل للاستيراد والتصدير: كل ما تحتاج معرفته لبدء تجارتك الدولية</h1><div class="art-meta"><span><i class="fas fa-calendar-alt"></i> 15 يناير 2024</span><span><i class="fas fa-user"></i> فريق SMART Trade</span><span><i class="fas fa-clock"></i> 15 دقيقة قراءة</span></div></div>
+    <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200" alt="" class="art-featured">
+    <div class="art-content">
+        <h2>مقدمة في عالم التجارة الدولية</h2>
+        <p>تُعد التجارة الدولية من أهم ركائز الاقتصاد العالمي، حيث تربط بين الدول والشعوب وتتيح تبادل السلع والخدمات عبر الحدود. في عصر العولمة الذي نعيشه اليوم، أصبح الاستيراد والتصدير فرصة ذهبية للشركات من جميع الأحجام للنمو والتوسع في أسواق جديدة.</p>
+        <p>سواء كنت رائد أعمال مبتدئ يسعى لتصدير منتجاته لأول مرة، أو شركة كبيرة تبحث عن مصادر استيراد جديدة، فإن فهم أساسيات التجارة الدولية هو المفتاح لنجاحك في هذا المجال الواسع والمثير.</p>
+        <blockquote>"التجارة الدولية ليست مجرد تبادل سلع، بل هي جسر يربط بين الثقافات والحضارات ويفتح آفاقاً جديدة للنمو والازدهار"</blockquote>
+        <h2>ما هو الاستيراد والتصدير؟</h2>
+        <h3>التصدير</h3>
+        <p>التصدير هو عملية بيع وإرسال السلع أو الخدمات من بلد المنشأ إلى بلد آخر. عندما تقوم شركة سورية ببيع زيت الزيتون إلى ألمانيا، فهي تقوم بعملية تصدير. يعتبر التصدير مصدراً أساسياً للعملات الأجنبية وعاملاً مهماً في نمو الاقتصاد الوطني.</p>
+        <h3>الاستيراد</h3>
+        <p>الاستيراد هو العملية العكسية، حيث يتم شراء واستقبال السلع أو الخدمات من بلد أجنبي. عندما تشتري شركة سورية آلات صناعية من الصين أو إلكترونيات من كوريا الجنوبية، فهي تقوم بعملية استيراد.</p>
+        <div class="art-images"><img src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=600" alt="تصدير"><img src="https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?w=600" alt="استيراد"></div>
+        <h2>فوائد التجارة الدولية</h2>
+        <ul>
+            <li><strong>توسيع قاعدة العملاء:</strong> الوصول إلى ملايين العملاء المحتملين حول العالم بدلاً من الاقتصار على السوق المحلي</li>
+            <li><strong>زيادة الإيرادات:</strong> فتح أسواق جديدة يعني فرص مبيعات أكبر بكثير وإيرادات متزايدة</li>
+            <li><strong>تنويع المخاطر:</strong> عدم الاعتماد على سوق واحد يقلل المخاطر التجارية بشكل كبير</li>
+            <li><strong>تحسين جودة المنتجات:</strong> المنافسة العالمية تدفع نحو التطوير والتحسين المستمر للمنتجات</li>
+            <li><strong>الحصول على مواد بأسعار أفضل:</strong> الاستيراد من مصادر متعددة يخفض التكاليف الإنتاجية</li>
+            <li><strong>نقل التكنولوجيا:</strong> التجارة تساعد في نقل التقنيات الحديثة وتطبيقها محلياً</li>
+        </ul>
+        <div class="art-highlight"><h4>هل تعلم؟</h4><p>تتجاوز قيمة التجارة العالمية 25 تريليون دولار سنوياً، مما يجعلها أحد أكبر القطاعات الاقتصادية في العالم. وتستحوذ المنتجات الغذائية والمنسوجات والإلكترونيات على النسبة الأكبر من هذه التجارة.</p></div>
+        <h2>خطوات بدء التصدير</h2>
+        <ol>
+            <li><strong>دراسة السوق المستهدف:</strong> ابحث عن الأسواق التي يوجد فيها طلب كبير على منتجاتك وادرس المنافسين والأسعار السائدة</li>
+            <li><strong>فهم اللوائح والقوانين:</strong> كل دولة لها قوانينها الخاصة بالاستيراد والضرائب والمعايير المطلوبة</li>
+            <li><strong>تحديد استراتيجية التسعير:</strong> ضع في اعتبارك تكاليف الشحن والجمارك والضرائب عند تحديد الأسعار</li>
+            <li><strong>اختيار شريك لوجستي موثوق:</strong> الشحن والتخليص الجمركي أمران حاسمان لنجاح عمليات التصدير</li>
+            <li><strong>إعداد المستندات المطلوبة:</strong> الفواتير التجارية، شهادات المنشأ، بوالص الشحن، وأي وثائق إضافية</li>
+        </ol>
+        <div class="art-images"><img src="https://images.unsplash.com/photo-1553413077-190dd305871c?w=600" alt="مستودع"><img src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600" alt="لوجستيات"></div>
+        <h2>المنتجات السورية الأكثر طلباً للتصدير</h2>
+        <p>تتميز سوريا بمنتجات فريدة ذات جودة عالية ومطلوبة في الأسواق العالمية:</p>
+        <ul>
+            <li><strong>زيت الزيتون:</strong> من أجود أنواع زيت الزيتون في العالم، ويصدر إلى أوروبا والخليج</li>
+            <li><strong>صابون الغار:</strong> منتج تقليدي فريد له سمعة عالمية ويعتبر من أقدم أنواع الصابون في التاريخ</li>
+            <li><strong>المنسوجات القطنية:</strong> أقمشة عالية الجودة بأسعار تنافسية مع تاريخ عريق في صناعة النسيج</li>
+            <li><strong>الحرف اليدوية:</strong> منتجات تقليدية دمشقية لا مثيل لها مثل الموزاييك والبروكار</li>
+            <li><strong>التوابل والبهارات:</strong> نكهات شرقية أصيلة مطلوبة في جميع أنحاء العالم</li>
+            <li><strong>الفستق الحلبي:</strong> من أجود أنواع المكسرات على مستوى العالم ويتميز بنكهته الفريدة</li>
+        </ul>
+        <h2>لماذا تختار SMART Trade؟</h2>
+        <p>منذ أكثر من 15 عاماً، ونحن في SMART Trade نساعد الشركات السورية والعربية على النجاح في التجارة الدولية. نتميز بشبكة شركاء في أكثر من 54 دولة، وخدمات شحن متكاملة بحرية وجوية وبرية، وتخليص جمركي سريع وموثوق، ومستودعات حديثة ومؤمنة، واستشارات تجارية متخصصة.</p>
+        <blockquote>"لا تدع تعقيدات التجارة الدولية تقف في طريق نجاحك. دعنا نكون شريكك الموثوق في رحلة التوسع العالمي."</blockquote>
+    </div>
+    <div class="art-tags"><span class="art-tag">تجارة دولية</span><span class="art-tag">استيراد</span><span class="art-tag">تصدير</span><span class="art-tag">لوجستيات</span><span class="art-tag">شحن</span><span class="art-tag">جمارك</span></div>
+</div></div></section>
+
+<!-- FAQ -->
+<section id="faq"><div class="container">
+    <div class="sec-head"><span class="sec-tag"><i class="fas fa-question-circle"></i> الأسئلة الشائعة</span><h2 class="sec-title">أسئلة <span>متكررة</span></h2></div>
+    <div class="faq-wrap">
+        <div class="faq-item open"><div class="faq-q" onclick="toggleFaq(this.parentElement)"><h4><i class="fas fa-ship"></i> ما هي مدة الشحن البحري إلى أوروبا؟</h4><div class="faq-arrow"><i class="fas fa-chevron-down"></i></div></div><div class="faq-a"><div class="faq-a-inner">تتراوح مدة الشحن البحري من سوريا إلى موانئ أوروبا الرئيسية بين 10-15 يوماً، حسب ميناء الوصول وجدول خطوط الملاحة. نقدم أيضاً خيارات شحن سريعة للطلبات العاجلة.</div></div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this.parentElement)"><h4><i class="fas fa-file-invoice"></i> ما هي المستندات المطلوبة للتصدير؟</h4><div class="faq-arrow"><i class="fas fa-chevron-down"></i></div></div><div class="faq-a"><div class="faq-a-inner">المستندات الأساسية تشمل: الفاتورة التجارية، شهادة المنشأ، بوليصة الشحن، قائمة التعبئة. فريقنا يساعدك في إعداد جميع المستندات.</div></div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this.parentElement)"><h4><i class="fas fa-money-bill-wave"></i> كيف تتم عملية الدفع؟</h4><div class="faq-arrow"><i class="fas fa-chevron-down"></i></div></div><div class="faq-a"><div class="faq-a-inner">نقبل التحويل البنكي المباشر، الاعتمادات المستندية (L/C)، والدفع عند الاستلام لبعض الدول. يمكن تقسيط المبلغ حسب الاتفاق.</div></div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this.parentElement)"><h4><i class="fas fa-box"></i> هل تقدمون خدمات التعبئة والتغليف؟</h4><div class="faq-arrow"><i class="fas fa-chevron-down"></i></div></div><div class="faq-a"><div class="faq-a-inner">نعم، نقدم خدمات تعبئة وتغليف احترافية تناسب جميع أنواع البضائع باستخدام مواد عالية الجودة.</div></div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this.parentElement)"><h4><i class="fas fa-globe"></i> ما هي الدول التي تشحنون إليها؟</h4><div class="faq-arrow"><i class="fas fa-chevron-down"></i></div></div><div class="faq-a"><div class="faq-a-inner">نعمل مع شركاء في أكثر من 54 دولة تشمل الخليج العربي، أوروبا، آسيا، وأفريقيا. تواصل معنا للتفاصيل.</div></div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this.parentElement)"><h4><i class="fas fa-truck"></i> هل يمكنكم تتبع الشحنات؟</h4><div class="faq-arrow"><i class="fas fa-chevron-down"></i></div></div><div class="faq-a"><div class="faq-a-inner">بالتأكيد! نوفر نظام تتبع متقدم يمكنك من متابعة شحنتك في الوقت الفعلي مع إشعارات في كل مرحلة.</div></div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this.parentElement)"><h4><i class="fas fa-shield-alt"></i> هل البضائع مؤمنة؟</h4><div class="faq-arrow"><i class="fas fa-chevron-down"></i></div></div><div class="faq-a"><div class="faq-a-inner">نعم، نوفر تأميناً شاملاً على جميع الشحنات يغطي الأضرار والفقدان بمستويات تغطية مختلفة.</div></div></div>
+        <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this.parentElement)"><h4><i class="fas fa-headset"></i> كيف يمكنني التواصل مع خدمة العملاء؟</h4><div class="faq-arrow"><i class="fas fa-chevron-down"></i></div></div><div class="faq-a"><div class="faq-a-inner">عبر الهاتف: +963 11 123 4567، البريد: info@smartsyria.com، أو نموذج التواصل. الفريق متاح من الأحد للخميس 9-6.</div></div></div>
+    </div>
+</div></section>
+
+<!-- COUNTRIES -->
+<section id="countries"><div class="container">
+    <div class="sec-head"><span class="sec-tag"><i class="fas fa-globe-americas"></i> شبكتنا</span><h2 class="sec-title" style="color:#fff">54+ دولة <span>حول العالم</span></h2></div>
+    <div id="map"></div>
+    <div class="cnt-grid">
+        <div class="cnt-card"><img src="https://flagcdn.com/w160/ae.png" class="cnt-flag" alt=""><h4>الإمارات</h4><div class="cnt-stats"><i class="fas fa-shipping-fast"></i> 2,450</div></div>
+        <div class="cnt-card"><img src="https://flagcdn.com/w160/sa.png" class="cnt-flag" alt=""><h4>السعودية</h4><div class="cnt-stats"><i class="fas fa-shipping-fast"></i> 3,890</div></div>
+        <div class="cnt-card"><img src="https://flagcdn.com/w160/tr.png" class="cnt-flag" alt=""><h4>تركيا</h4><div class="cnt-stats"><i class="fas fa-shipping-fast"></i> 4,120</div></div>
+        <div class="cnt-card"><img src="https://flagcdn.com/w160/eg.png" class="cnt-flag" alt=""><h4>مصر</h4><div class="cnt-stats"><i class="fas fa-shipping-fast"></i> 1,890</div></div>
+        <div class="cnt-card"><img src="https://flagcdn.com/w160/de.png" class="cnt-flag" alt=""><h4>ألمانيا</h4><div class="cnt-stats"><i class="fas fa-shipping-fast"></i> 3,450</div></div>
+        <div class="cnt-card"><img src="https://flagcdn.com/w160/cn.png" class="cnt-flag" alt=""><h4>الصين</h4><div class="cnt-stats"><i class="fas fa-shipping-fast"></i> 8,890</div></div>
+        <div class="cnt-card"><img src="https://flagcdn.com/w160/in.png" class="cnt-flag" alt=""><h4>الهند</h4><div class="cnt-stats"><i class="fas fa-shipping-fast"></i> 5,670</div></div>
+        <div class="cnt-card"><img src="https://flagcdn.com/w160/ru.png" class="cnt-flag" alt=""><h4>روسيا</h4><div class="cnt-stats"><i class="fas fa-shipping-fast"></i> 2,340</div></div>
+        <div class="cnt-card"><img src="https://flagcdn.com/w160/jo.png" class="cnt-flag" alt=""><h4>الأردن</h4><div class="cnt-stats"><i class="fas fa-shipping-fast"></i> 1,230</div></div>
+        <div class="cnt-card"><img src="https://flagcdn.com/w160/lb.png" class="cnt-flag" alt=""><h4>لبنان</h4><div class="cnt-stats"><i class="fas fa-shipping-fast"></i> 2,150</div></div>
+        <div class="cnt-card"><img src="https://flagcdn.com/w160/iq.png" class="cnt-flag" alt=""><h4>العراق</h4><div class="cnt-stats"><i class="fas fa-shipping-fast"></i> 1,670</div></div>
+        <div class="cnt-card"><img src="https://flagcdn.com/w160/kw.png" class="cnt-flag" alt=""><h4>الكويت</h4><div class="cnt-stats"><i class="fas fa-shipping-fast"></i> 980</div></div>
+    </div>
+</div></section>
+
+<!-- CONTACT -->
+<section id="contact"><div class="container">
+    <div class="sec-head"><span class="sec-tag"><i class="fas fa-envelope"></i> تواصل معنا</span><h2 class="sec-title">نحن هنا <span>لمساعدتك</span></h2></div>
+    <div class="contact-grid">
+        <div class="contact-info">
+            <h3>معلومات الاتصال</h3>
+            <div class="c-item"><div class="c-icon"><i class="fas fa-map-marker-alt"></i></div><div class="c-text"><h4>العنوان</h4><p>دمشق، سوريا<br>شارع الثورة، بناء 15</p></div></div>
+            <div class="c-item"><div class="c-icon"><i class="fas fa-phone-alt"></i></div><div class="c-text"><h4>الهاتف</h4><p>+963 11 123 4567<br>+963 944 123 456</p></div></div>
+            <div class="c-item"><div class="c-icon"><i class="fas fa-envelope"></i></div><div class="c-text"><h4>البريد</h4><p>info@smartsyria.com<br>support@smartsyria.com</p></div></div>
+            <div class="c-item"><div class="c-icon"><i class="fas fa-clock"></i></div><div class="c-text"><h4>ساعات العمل</h4><p>الأحد - الخميس<br>9:00 ص - 6:00 م</p></div></div>
+            <div class="social">
+                <a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-twitter"></i></a><a href="#"><i class="fab fa-linkedin-in"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="https://wa.me/963944123456"><i class="fab fa-whatsapp"></i></a>
+            </div>
+        </div>
+        <div class="contact-form">
+            <h3>أرسل لنا رسالة</h3>
+            <form onsubmit="handleContact(event)">
+                <div class="form-row"><div class="form-group"><label>الاسم</label><input type="text" class="f-ctrl" placeholder="اسمك الكامل" required></div><div class="form-group"><label>البريد</label><input type="email" class="f-ctrl" placeholder="email@example.com" required></div></div>
+                <div class="form-row"><div class="form-group"><label>الهاتف</label><input type="tel" class="f-ctrl" placeholder="+963 XXX XXX" required></div><div class="form-group"><label>الخدمة</label><select class="f-ctrl" required><option value="">اختر</option><option>تصدير</option><option>استيراد</option><option>شحن</option><option>تخليص جمركي</option><option>تخزين</option><option>استشارات</option><option>أخرى</option></select></div></div>
+                <div class="form-group"><label>رسالتك</label><textarea class="f-ctrl" placeholder="اكتب رسالتك..." required></textarea></div>
+                <button type="submit" class="submit-btn"><i class="fas fa-paper-plane"></i> إرسال</button>
+            </form>
+        </div>
+    </div>
+</div></section>
+
+<!-- FOOTER -->
+<footer><div class="container">
+    <div class="foot-grid">
+        <div class="foot-about"><div class="logo" style="margin-bottom:10px"><div class="logo-box"><i class="fas fa-chart-line"></i></div><div><h1>SMART Trade</h1><small>منصة التجارة العالمية</small></div></div><p>منصة SMART للتجارة الدولية - شريككم الموثوق في الاستيراد والتصدير. نغطي أكثر من 54 دولة.</p><div class="social" style="margin-top:15px"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-twitter"></i></a><a href="#"><i class="fab fa-linkedin-in"></i></a><a href="#"><i class="fab fa-instagram"></i></a></div></div>
+        <div class="foot-sec"><h3>روابط سريعة</h3><ul class="foot-links"><li><a href="#hero"><i class="fas fa-chevron-left"></i> الرئيسية</a></li><li><a href="#services"><i class="fas fa-chevron-left"></i> الخدمات</a></li><li><a href="#gallery"><i class="fas fa-chevron-left"></i> المعرض</a></li><li><a href="#blog"><i class="fas fa-chevron-left"></i> المدونة</a></li><li><a href="#faq"><i class="fas fa-chevron-left"></i> الأسئلة</a></li></ul></div>
+        <div class="foot-sec"><h3>خدماتنا</h3><ul class="foot-links"><li><a href="#services"><i class="fas fa-chevron-left"></i> التصدير</a></li><li><a href="#services"><i class="fas fa-chevron-left"></i> الاستيراد</a></li><li><a href="#services"><i class="fas fa-chevron-left"></i> الشحن</a></li><li><a href="#services"><i class="fas fa-chevron-left"></i> التخليص الجمركي</a></li></ul></div>
+        <div class="foot-sec"><h3>تواصل معنا</h3><ul class="foot-links"><li><i class="fas fa-map-marker-alt" style="color:var(--red)"></i> دمشق، سوريا</li><li><i class="fas fa-phone-alt" style="color:var(--red)"></i> +963 11 123 4567</li><li><i class="fas fa-envelope" style="color:var(--red)"></i> info@smartsyria.com</li></ul></div>
+    </div>
+    <div class="foot-bottom"><p>&copy; 2024 SMART Trade. جميع الحقوق محفوظة.</p><div class="visitor"><i class="fas fa-eye"></i><span>الزوار: <strong id="vc">0</strong></span></div></div>
+</div></footer>
+
+<!-- FLOATING -->
+<a href="https://wa.me/963944123456" class="float-wa" target="_blank"><i class="fab fa-whatsapp"></i></a>
+<a href="#hero" class="back-top" id="backTop"><i class="fas fa-arrow-up"></i></a>
+
+<!-- MODAL -->
+<div class="modal" id="modal"><div class="modal-box"><div class="m-icon"><i class="fas fa-check"></i></div><h3>تم بنجاح!</h3><p id="modalMsg">تم إرسال رسالتك بنجاح.</p><button class="modal-btn" onclick="document.getElementById('modal').classList.remove('show')">حسناً</button></div></div><script>
+// PRELOADER
+window.addEventListener('load',()=>setTimeout(()=>document.getElementById('preloader').classList.add('hide'),2000));
+
+// HEADER SCROLL
+window.addEventListener('scroll',()=>{
+    document.getElementById('header').classList.toggle('scrolled',scrollY>100);
+    document.getElementById('backTop').classList.toggle('show',scrollY>300);
+});
+
+// SMOOTH SCROLL
+document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const t=document.querySelector(a.getAttribute('href'));if(t)window.scrollTo({top:t.offsetTop-100,behavior:'smooth'})}));
+
+// CLOSE LOGIN ON OUTSIDE CLICK
+document.addEventListener('click',e=>{if(!e.target.closest('.login-area'))document.getElementById('loginDrop').classList.remove('show')});
+
+// LOGIN TABS
+function switchLDTab(t){
+    document.querySelectorAll('.ld-tab').forEach((tab,i)=>{tab.classList.toggle('active',i===(t==='login'?0:1))});
+    document.getElementById('ldLogin').classList.toggle('active',t==='login');
+    document.getElementById('ldReg').classList.toggle('active',t==='reg');
+    document.getElementById('ldLogin').style.display=t==='login'?'block':'none';
+    document.getElementById('ldReg').style.display=t==='reg'?'block':'none';
+}
+
+function handleLD(e){e.preventDefault();document.getElementById('loginDrop').classList.remove('show');showModal('تم بنجاح! مرحباً بك.')}
+
+// HERO SLIDER
+let cs=0;const slides=document.querySelectorAll('.slide'),dots=document.querySelectorAll('.slider-dot');
+function showS(i){slides.forEach(s=>s.classList.remove('active'));dots.forEach(d=>d.classList.remove('active'));cs=i;if(cs>=slides.length)cs=0;if(cs<0)cs=slides.length-1;slides[cs].classList.add('active');dots[cs].classList.add('active')}
+function goSlide(i){showS(i)}
+function nextS(){showS(cs+1)}
+function prevS(){showS(cs-1)}
+setInterval(()=>showS(cs+1),6000);
+
+// COUNTER
+function animC(el){const t=parseInt(el.dataset.c),d=2000,s=t/(d/16);let c=0;const timer=setInterval(()=>{c+=s;if(c>=t){el.textContent=t.toLocaleString();clearInterval(timer)}else el.textContent=Math.floor(c).toLocaleString()},16)}
+const cObs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.querySelectorAll('.stat-num').forEach(animC);cObs.unobserve(e.target)}})},{threshold:.5});
+document.querySelectorAll('.stats').forEach(el=>cObs.observe(el));
+
+// TESTIMONIALS
+let ct=0;const testis=document.querySelectorAll('.testi'),tDots=document.querySelectorAll('.testi-dot');
+function goTesti(i){testis.forEach(t=>t.classList.remove('active'));tDots.forEach(d=>d.classList.remove('active'));ct=i;testis[ct].classList.add('active');tDots[ct].classList.add('active')}
+setInterval(()=>{ct=(ct+1)%testis.length;goTesti(ct)},5000);
+
+// GALLERY FILTER
+function filterGal(cat,btn){
+    document.querySelectorAll('.gal-filter').forEach(f=>f.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.gal-item').forEach(item=>{
+        item.style.display=(cat==='all'||item.dataset.cat===cat)?'block':'none';
+    });
+}
+
+// LIGHTBOX
+const galImages=[];
+document.querySelectorAll('.gal-item img').forEach(img=>galImages.push(img.src));
+let lbIdx=0;
+function openLB(i){lbIdx=i;document.getElementById('lbImg').src=galImages[i];document.getElementById('lightbox').classList.add('show')}
+function closeLB(){document.getElementById('lightbox').classList.remove('show')}
+function lbNav(dir){lbIdx+=dir;if(lbIdx<0)lbIdx=galImages.length-1;if(lbIdx>=galImages.length)lbIdx=0;document.getElementById('lbImg').src=galImages[lbIdx]}
+
+// FAQ
+function toggleFaq(item){const wasOpen=item.classList.contains('open');document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));if(!wasOpen)item.classList.add('open')}
+
+// MAP
+setTimeout(()=>{
+    const map=L.map('map').setView([33.5,36.3],2);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+    const countries=[[25.2,55.3,'الإمارات'],[23.9,45.1,'السعودية'],[39,35.2,'تركيا'],[26.8,30.8,'مصر'],[51.2,10.5,'ألمانيا'],[35.9,104.2,'الصين'],[20.6,79,'الهند'],[61.5,105.3,'روسيا'],[30.6,36.2,'الأردن'],[33.9,35.9,'لبنان'],[33.2,43.7,'العراق'],[29.3,47.5,'الكويت']];
+    countries.forEach(([lat,lng,name])=>{
+        const icon=L.divIcon({className:'',html:'<div style="background:linear-gradient(135deg,#dc2626,#b91c1c);width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px rgba(220,38,38,.5)"></div>',iconSize:[18,18]});
+        L.marker([lat,lng],{icon}).addTo(map).bindPopup(`<b>${name}</b>`);
+    });
+},3000);
+
+// SEARCH
+const searchData=[
+    {title:'خدمات التصدير',desc:'تصدير المنتجات السورية',img:'https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=100',link:'#services'},
+    {title:'خدمات الاستيراد',desc:'استيراد البضائع من العالم',img:'https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?w=100',link:'#services'},
+    {title:'الشحن واللوجستيات',desc:'شحن بحري وجوي وبري',img:'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=100',link:'#services'},
+    {title:'التخزين',desc:'مستودعات حديثة ومؤمنة',img:'https://images.unsplash.com/photo-1553413077-190dd305871c?w=100',link:'#services'},
+    {title:'التخليص الجمركي',desc:'إجراءات جمركية سريعة',img:'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=100',link:'#services'},
+    {title:'الإمارات العربية',desc:'2,450 شحنة',img:'https://flagcdn.com/w160/ae.png',link:'#countries'},
+    {title:'السعودية',desc:'3,890 شحنة',img:'https://flagcdn.com/w160/sa.png',link:'#countries'},
+    {title:'تركيا',desc:'4,120 شحنة',img:'https://flagcdn.com/w160/tr.png',link:'#countries'},
+    {title:'الصين',desc:'8,890 شحنة',img:'https://flagcdn.com/w160/cn.png',link:'#countries'},
+    {title:'دليل الاستيراد والتصدير',desc:'مقالة شاملة',img:'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=100',link:'#article'},
+    {title:'الأسئلة الشائعة',desc:'إجابات على أسئلتكم',img:'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=100',link:'#faq'},
+    {title:'معرض الصور',desc:'صور من أعمالنا',img:'https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=100',link:'#gallery'},
+];
+
+function doSearch(){
+    const q=document.getElementById('searchInput').value.trim().toLowerCase();
+    const results=document.getElementById('searchResults');
+    if(q.length<2){results.classList.remove('show');return}
+    const filtered=searchData.filter(item=>item.title.toLowerCase().includes(q)||item.desc.toLowerCase().includes(q));
+    if(filtered.length===0){results.innerHTML='<div class="sr-empty"><i class="fas fa-search" style="font-size:30px;margin-bottom:10px;color:var(--red)"></i><p>لا توجد نتائج لـ "'+q+'"</p></div>';results.classList.add('show');return}
+    results.innerHTML=filtered.map(item=>`<div class="sr-item" onclick="window.location.href='${item.link}';document.getElementById('searchResults').classList.remove('show');document.getElementById('searchInput').value=''"><img src="${item.img}" alt=""><div class="result-info"><h4>${item.title}</h4><span>${item.desc}</span></div></div>`).join('');
+    results.classList.add('show');
+}
+
+document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))document.getElementById('searchResults').classList.remove('show')});
+
+// CONTACT FORM
+function handleContact(e){e.preventDefault();showModal('تم إرسال رسالتك بنجاح! سنتواصل معك قريباً.');e.target.reset()}
+
+// MODAL
+function showModal(msg){document.getElementById('modalMsg').textContent=msg;document.getElementById('modal').classList.add('show')}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('show')});
+
+// VISITOR COUNTER
+let vc=parseInt(localStorage.getItem('vc')||'25847')+1;
+localStorage.setItem('vc',vc);
+document.getElementById('vc').textContent=vc.toLocaleString();
+
+// SCROLL ANIMATIONS
+const aObs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)'}})},{threshold:.1});
+document.querySelectorAll('.srv-card,.cnt-card,.blog-card,.faq-item,.c-item,.vid-feat,.gal-item').forEach(el=>{el.style.opacity='0';el.style.transform='translateY(30px)';el.style.transition='all .6s ease';aObs.observe(el)});
+</script>
+</body>
+</html>
